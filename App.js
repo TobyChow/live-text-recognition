@@ -21,9 +21,6 @@ export default function App() {
     const devices = useCameraDevices();
     const device = devices.back;
 
-    // represents position of the cat on the screen 🐈
-    const catBounds = useSharedValue({ top: 0, left: 0, right: 100, bottom: 100 });
-
     useEffect(() => {
         (async () => {
             const status = await Camera.requestCameraPermission();
@@ -34,11 +31,15 @@ export default function App() {
     const frameProcessor = useFrameProcessor(frame => {
         'worklet';
         const scannedOcr = scanOCR(frame);
+
+        console.log(scannedOcr);
+        
         if (scannedOcr) {
             if (scannedOcr.result.text === 'adidas') {
-                const matchedFrame = scannedOcr.result.blocks[0].frame;
-                console.log(matchedFrame);
-                runOnJS(setMatchedFrame)(matchedFrame);
+                console.log(`frame: ${frame.width}, ${frame.height}`);
+                const capturedFrame = scannedOcr.result.blocks[0].frame;
+                console.log(capturedFrame);
+                runOnJS(setMatchedFrame)(capturedFrame);
             }
         }
         if (scannedOcr.result?.text) {
@@ -53,10 +54,7 @@ export default function App() {
           for (let index = 0; index < device.formats.length; index++) {
             const format = device.formats[index];
             if (format) {
-              console.log("h: "+format.videoHeight);
-              console.log("w: "+format.videoWidth);
               if (format.videoWidth == desiredWidth && format.videoHeight == desiredHeight){
-                console.log("select format: "+ JSON.stringify(format));
                 return format;
               }
             }
@@ -65,9 +63,10 @@ export default function App() {
         return undefined;
       }, [device?.formats]);
 
+
     const { width: screenW, height: screenH } = Dimensions.get('screen');
 
-    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 720, 1280);
+    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 1280, 720);
     /*
     const f = {
         "boundingCenterY": 683,
@@ -94,19 +93,29 @@ export default function App() {
 
     let matchedOverlayStyle = {};
     if (matchedFrame) {
+        const padding = 0;
         const topPos = matchedFrame.y * 1 / hRatio;
         const leftPos = matchedFrame.x * 1 / wRatio;
         const boxHeight = matchedFrame.height * 1 / hRatio;
         const boxWidth = matchedFrame.width * 1 / wRatio;
         matchedOverlayStyle = {
-            top: topPos - (boxHeight * 0.5),
-            left: leftPos - (boxWidth * 0.5),
-            width: boxWidth,
-            height: boxHeight,
+            top: topPos - (boxHeight * 0.5) - padding,
+            left: leftPos - (boxWidth * 0.5) - padding,
+            width: boxWidth + padding,
+            height: boxHeight + padding,
         };
 
         boxOverlayStyle = Object.assign(boxOverlayStyle, matchedOverlayStyle);
     }
+
+    let midStyle = {
+        position: 'absolute',
+        backgroundColor: 'blue',
+        top: 1500 * 1/hRatio,
+        left: 1500 * 1/wRatio,
+        width:10,
+        height:10,
+    };
 
     return (
         device != null &&
@@ -116,15 +125,18 @@ export default function App() {
                     style={StyleSheet.absoluteFill}
                     device={device}
                     isActive={true}
-                    // format={format}
+//                    format={format}
                     frameProcessor={frameProcessor}
-                    frameProcessorFps={1}
+                    frameProcessorFps={5}
                 />
                 {matchedFrame  &&
                 <View style={boxOverlayStyle}>
-                    <Text>BOX4</Text>
+                    <Text></Text>
                 </View>
                 }
+                <View style={midStyle}>
+                    <Text></Text>
+                </View>
                 <View>
                     <Text>{scannedOcrResult}</Text>
                     <Text>{`dim: ${screenW}, ${screenH}`}</Text>

@@ -1,5 +1,7 @@
 /*
 * npx react-native start
+* adb -s R58NB3T8EED reverse tcp:8081 tcp:8081rnvc4>
+8081
 * 
 */
 
@@ -8,3 +10,6 @@
 
 // devices.format
 {"pixelFormat":"420v","videoStabilizationModes":["off","auto","standard"],"maxZoom":8,"minISO":29,"maxISO":941,"autoFocusSystem":"none","supportsPhotoHDR":false,"colorSpaces":["jpeg"],"videoWidth":1280,"videoHeight":720,"photoWidth":1280,"frameRateRanges":[{"maxFrameRate":60,"minFrameRate":1},{"maxFrameRate":15,"minFrameRate":15},{"maxFrameRate":24,"minFrameRate":6},{"maxFrameRate":24,"minFrameRate":24},{"maxFrameRate":30,"minFrameRate":7},{"maxFrameRate":30,"minFrameRate":8},{"maxFrameRate":30,"minFrameRate":30}],"photoHeight":720,"supportsVideoHDR":false,"isHighestPhotoQualitySupported":false,"fieldOfView":70.54384665367084}
+
+//
+
