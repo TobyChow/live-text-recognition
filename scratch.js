@@ -1,6 +1,6 @@
 /*
 * npx react-native start
-* adb -s R58NB3T8EED reverse tcp:8081 tcp:8081rnvc4>
+* adb -s R58NB3T8EED reverse tcp:8081 tcp:8081
 8081
 * 
 */

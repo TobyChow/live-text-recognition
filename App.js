@@ -32,13 +32,11 @@ export default function App() {
         'worklet';
         const scannedOcr = scanOCR(frame);
 
-        console.log(scannedOcr);
-        
         if (scannedOcr) {
             if (scannedOcr.result.text === 'adidas') {
                 console.log(`frame: ${frame.width}, ${frame.height}`);
                 const capturedFrame = scannedOcr.result.blocks[0].frame;
-                console.log(capturedFrame);
+                console.log(JSON.stringify(capturedFrame));
                 runOnJS(setMatchedFrame)(capturedFrame);
             }
         }
@@ -66,7 +64,7 @@ export default function App() {
 
     const { width: screenW, height: screenH } = Dimensions.get('screen');
 
-    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 1280, 720);
+    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 720, 1280);
     /*
     const f = {
         "boundingCenterY": 683,
@@ -98,12 +96,21 @@ export default function App() {
         const leftPos = matchedFrame.x * 1 / wRatio;
         const boxHeight = matchedFrame.height * 1 / hRatio;
         const boxWidth = matchedFrame.width * 1 / wRatio;
+        /*
         matchedOverlayStyle = {
             top: topPos - (boxHeight * 0.5) - padding,
             left: leftPos - (boxWidth * 0.5) - padding,
             width: boxWidth + padding,
             height: boxHeight + padding,
         };
+        */
+        matchedOverlayStyle = {
+            left: topPos - (boxWidth * 0.5), 
+            top:  leftPos - (boxHeight * 0.5),
+            height: boxWidth + padding,
+            width: boxHeight + padding,
+        };
+
 
         boxOverlayStyle = Object.assign(boxOverlayStyle, matchedOverlayStyle);
     }
@@ -111,8 +118,8 @@ export default function App() {
     let midStyle = {
         position: 'absolute',
         backgroundColor: 'blue',
-        top: 1500 * 1/hRatio,
-        left: 1500 * 1/wRatio,
+        top: 350 * 1/hRatio,
+        left: 500 * 1/wRatio,
         width:10,
         height:10,
     };
@@ -124,10 +131,11 @@ export default function App() {
                 <Camera
                     style={StyleSheet.absoluteFill}
                     device={device}
-                    isActive={true}
-//                    format={format}
+                    isActive={false} 
+                    orientation={"landscapeLeft"}
+                    // format={format}
                     frameProcessor={frameProcessor}
-                    frameProcessorFps={5}
+                    frameProcessorFps={1}
                 />
                 {matchedFrame  &&
                 <View style={boxOverlayStyle}>
@@ -140,6 +148,7 @@ export default function App() {
                 <View>
                     <Text>{scannedOcrResult}</Text>
                     <Text>{`dim: ${screenW}, ${screenH}`}</Text>
+                    <Text>{JSON.stringify(matchedFrame)}</Text>
                 </View>
             </>
         )
