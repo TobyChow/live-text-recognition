@@ -5,7 +5,7 @@ import {
     useCameraDevices,
     useFrameProcessor,
 } from 'react-native-vision-camera';
-import { View, Text, StyleSheet, Animated, SafeAreaView, LogBox, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, SafeAreaView, LogBox, Dimensions, useWindowDimensions, StatusBar } from 'react-native';
 import { scanOCR } from 'vision-camera-ocr';
 import {
     useSharedValue,
@@ -14,9 +14,14 @@ import {
 } from 'react-native-reanimated';
 
 export default function App() {
+    const {height:screenH, width:screenW} = useWindowDimensions();
     const [hasPermission, setHasPermission] = useState(false);
     const [scannedOcrResult, setScannedOcrResult] = useState();
     const [matchedFrame, setMatchedFrame] = useState();
+    const bounds = useSharedValue({top:0, left:0, width:0, height:0});
+
+    //const { width: screenW, height: screenH } = Dimensions.get('screen');
+
 
     const devices = useCameraDevices();
     const device = devices.back;
@@ -37,6 +42,12 @@ export default function App() {
                 console.log(`frame: ${frame.width}, ${frame.height}`);
                 const capturedFrame = scannedOcr.result.blocks[0].frame;
                 console.log(JSON.stringify(capturedFrame));
+                bounds.value = {
+                    top: capturedFrame.y,
+                    left: capturedFrame.x,
+                    width: capturedFrame.width,
+                    height: capturedFrame.height,
+                };
                 runOnJS(setMatchedFrame)(capturedFrame);
             }
         }
@@ -62,9 +73,8 @@ export default function App() {
       }, [device?.formats]);
 
 
-    const { width: screenW, height: screenH } = Dimensions.get('screen');
 
-    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 720, 1280);
+    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 720,1280);
     /*
     const f = {
         "boundingCenterY": 683,
@@ -90,12 +100,12 @@ export default function App() {
     };
 
     let matchedOverlayStyle = {};
-    if (matchedFrame) {
+    if (Object.keys(bounds?.value).length != 0) {
         const padding = 0;
-        const topPos = matchedFrame.y * 1 / hRatio;
-        const leftPos = matchedFrame.x * 1 / wRatio;
-        const boxHeight = matchedFrame.height * 1 / hRatio;
-        const boxWidth = matchedFrame.width * 1 / wRatio;
+        const topPos = bounds.value.top / hRatio;
+        const leftPos = bounds.value.left / wRatio;
+        const boxHeight = bounds.value.height / hRatio;
+        const boxWidth = bounds.value.width / wRatio;
         /*
         matchedOverlayStyle = {
             top: topPos - (boxHeight * 0.5) - padding,
@@ -105,10 +115,10 @@ export default function App() {
         };
         */
         matchedOverlayStyle = {
-            left: topPos - (boxWidth * 0.5), 
-            top:  leftPos - (boxHeight * 0.5),
-            height: boxWidth + padding,
-            width: boxHeight + padding,
+            left: leftPos - (boxWidth * 0.5), 
+            top:  topPos - (boxHeight * 0.5),
+            height: boxHeight + padding,
+            width: boxWidth + padding,
         };
 
 
@@ -118,11 +128,23 @@ export default function App() {
     let midStyle = {
         position: 'absolute',
         backgroundColor: 'blue',
-        top: 350 * 1/hRatio,
-        left: 500 * 1/wRatio,
+        top: 449 * 1 ,
+        left: 205 * 1 ,
         width:10,
         height:10,
     };
+
+    const captureZone = {
+        position:'absolute',
+        top: screenH * 0.5,
+        left: 0,
+        width: screenW,
+        height: screenH * 0.1,
+        borderColor: 'green',
+        borderWidth: 3,
+    } 
+
+    console.log(captureZone);
 
     return (
         device != null &&
@@ -131,12 +153,12 @@ export default function App() {
                 <Camera
                     style={StyleSheet.absoluteFill}
                     device={device}
-                    isActive={false} 
-                    orientation={"landscapeLeft"}
+                    isActive={true} 
                     // format={format}
                     frameProcessor={frameProcessor}
-                    frameProcessorFps={1}
+                    frameProcessorFps={30} 
                 />
+                <StatusBar hidden={true} translucent={true}/>
                 {matchedFrame  &&
                 <View style={boxOverlayStyle}>
                     <Text></Text>
@@ -145,10 +167,13 @@ export default function App() {
                 <View style={midStyle}>
                     <Text></Text>
                 </View>
-                <View>
+                <View style={captureZone}>
+                </View>
+                <View style={styles.infoContainer}>
                     <Text>{scannedOcrResult}</Text>
                     <Text>{`dim: ${screenW}, ${screenH}`}</Text>
-                    <Text>{JSON.stringify(matchedFrame)}</Text>
+                    <Text>{JSON.stringify(bounds.value)}</Text>
+                    <Text>{JSON.stringify(boxOverlayStyle)}</Text>
                 </View>
             </>
         )
@@ -160,7 +185,11 @@ function screenToFrameRatio(screenW, screenH, frameW, frameH) {
     return {
         wRatio: frameW / screenW,
         hRatio: frameH / screenH,
-        // wRatio: 1,
-        // hRatio: 1,
     };
+}
+
+const styles = {
+    infoContainer: {
+        position:'absolute',
+    }
 }
