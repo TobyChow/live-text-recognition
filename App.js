@@ -22,7 +22,6 @@ export default function App() {
 
     //const { width: screenW, height: screenH } = Dimensions.get('screen');
 
-
     const devices = useCameraDevices();
     const device = devices.back;
 
@@ -39,9 +38,7 @@ export default function App() {
 
         if (scannedOcr) {
             if (scannedOcr.result.text === 'adidas') {
-                console.log(`frame: ${frame.width}, ${frame.height}`);
                 const capturedFrame = scannedOcr.result.blocks[0].frame;
-                console.log(JSON.stringify(capturedFrame));
                 bounds.value = {
                     top: capturedFrame.y,
                     left: capturedFrame.x,
@@ -74,7 +71,7 @@ export default function App() {
 
 
 
-    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 720,1280);
+    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 720, 1280);
     /*
     const f = {
         "boundingCenterY": 683,
@@ -153,10 +150,10 @@ export default function App() {
                 <Camera
                     style={StyleSheet.absoluteFill}
                     device={device}
-                    isActive={true} 
+                    isActive={false} 
                     // format={format}
                     frameProcessor={frameProcessor}
-                    frameProcessorFps={30} 
+                    frameProcessorFps={1} 
                 />
                 <StatusBar hidden={true} translucent={true}/>
                 {matchedFrame  &&
