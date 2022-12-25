@@ -13,17 +13,41 @@ import {
     runOnJS,
 } from 'react-native-reanimated';
 
+// todo can get this info from frame.width / frame.height instead of hardcoding
+const FRAME_WIDTH = 720;
+const FRAME_HEIGHT = 1280;
+
 export default function App() {
     const {height:screenH, width:screenW} = useWindowDimensions();
+    const bounds = useSharedValue({top:0, left:0, width:0, height:0});
+    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, FRAME_WIDTH, FRAME_HEIGHT);
+
     const [hasPermission, setHasPermission] = useState(false);
     const [scannedOcrResult, setScannedOcrResult] = useState();
     const [matchedFrame, setMatchedFrame] = useState();
-    const bounds = useSharedValue({top:0, left:0, width:0, height:0});
-
-    //const { width: screenW, height: screenH } = Dimensions.get('screen');
 
     const devices = useCameraDevices();
     const device = devices.back;
+
+    // dimensions relative to camera
+    const captureZone = {
+        position:'absolute',
+        top: screenH * 0.5,
+        left: 0,
+        width: screenW,
+        height: screenH * 0.1,
+        borderColor: 'green',
+        borderWidth: 3,
+    };
+
+    // dimensions relative to frame
+    const frameCaptureZone = {
+        position:'absolute',
+        top: screenH * 0.5 * hRatio,
+        left: 0 * wRatio,
+        width: screenW * wRatio,
+        height: screenH * 0.1 * hRatio,
+    };
 
     useEffect(() => {
         (async () => {
@@ -37,54 +61,56 @@ export default function App() {
         const scannedOcr = scanOCR(frame);
 
         if (scannedOcr) {
-            if (scannedOcr.result.text === 'adidas') {
-                const capturedFrame = scannedOcr.result.blocks[0].frame;
+            const textWithinCaptureArea = getTextInCaptureArea(scannedOcr.result.blocks);
+            if (textWithinCaptureArea.length !== 0) {
+                const capturedFrame = textWithinCaptureArea[0].frame;
                 bounds.value = {
                     top: capturedFrame.y,
                     left: capturedFrame.x,
                     width: capturedFrame.width,
                     height: capturedFrame.height,
                 };
-                runOnJS(setMatchedFrame)(capturedFrame);
+                runOnJS(setScannedOcrResult)(textWithinCaptureArea[0].text);
+                runOnJS(setMatchedFrame)(textWithinCaptureArea[0].frame); //todo assume only 1 line for now
             }
         }
-        if (scannedOcr.result?.text) {
-            runOnJS(setScannedOcrResult)(scannedOcr.result.text);
+
+        function getTextInCaptureArea(blocks) {
+            const result = [];
+            blocks.map(block => {
+                // skip current block if its not within capture zone
+                // determine by checking if center of block is within capture zone
+                if (isRectWithinCaptureZone(block)) {
+                    block.lines.forEach(line => {
+                        if (isRectWithinCaptureZone(line)) {
+                            result.push(line);
+                        }
+                    });
+                }
+            });
+            return result;
+        }
+        
+        /**
+         * True if rect1 is within rect2
+         *
+         * @param {Rect} rect1
+         * @param {Rect} rect2
+         */
+        function isRectWithinCaptureZone(rect) {
+            const rectCenterX = rect.frame.boundingCenterX;
+            const rectCenterY = rect.frame.boundingCenterY;
+            const captureCoordinates = {
+                left: frameCaptureZone.left,
+                top: frameCaptureZone.top,
+                right: frameCaptureZone.left + frameCaptureZone.width,
+                bottom: frameCaptureZone.top + frameCaptureZone.height
+            };
+
+            return rectCenterX >= captureCoordinates.left && rectCenterX <= captureCoordinates.right && rectCenterY >= captureCoordinates.top && rectCenterY <= captureCoordinates.bottom;
         }
     }, []);
 
-    const format = useMemo(() => {
-        const desiredWidth = 1280;
-        const desiredHeight = 720;
-        if (device) {
-          for (let index = 0; index < device.formats.length; index++) {
-            const format = device.formats[index];
-            if (format) {
-              if (format.videoWidth == desiredWidth && format.videoHeight == desiredHeight){
-                return format;
-              }
-            }
-          };
-        }
-        return undefined;
-      }, [device?.formats]);
-
-
-
-    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, 720, 1280);
-    /*
-    const f = {
-        "boundingCenterY": 683,
-        "x": 384.5,
-        "width": 437,
-        "y": 683,
-        "boundingCenterX": 384,
-        "height": 108
-    }
-    */
-
-    // uses 'catBounds' to position the red rectangle on screen.
-    // smoothly updates on UuseAnimatedStyle(() => ({
 
     let boxOverlayStyle = {
         position: 'absolute',
@@ -92,8 +118,8 @@ export default function App() {
         borderColor: 'red',
         top:0,
         left:0,
-        width:50,
-        height:50,
+        width:0,
+        height:0,
     };
 
     let matchedOverlayStyle = {};
@@ -103,16 +129,9 @@ export default function App() {
         const leftPos = bounds.value.left / wRatio;
         const boxHeight = bounds.value.height / hRatio;
         const boxWidth = bounds.value.width / wRatio;
-        /*
+
         matchedOverlayStyle = {
-            top: topPos - (boxHeight * 0.5) - padding,
-            left: leftPos - (boxWidth * 0.5) - padding,
-            width: boxWidth + padding,
-            height: boxHeight + padding,
-        };
-        */
-        matchedOverlayStyle = {
-            left: leftPos - (boxWidth * 0.5), 
+            left: leftPos - (boxWidth * 0.5),
             top:  topPos - (boxHeight * 0.5),
             height: boxHeight + padding,
             width: boxWidth + padding,
@@ -122,27 +141,6 @@ export default function App() {
         boxOverlayStyle = Object.assign(boxOverlayStyle, matchedOverlayStyle);
     }
 
-    let midStyle = {
-        position: 'absolute',
-        backgroundColor: 'blue',
-        top: 449 * 1 ,
-        left: 205 * 1 ,
-        width:10,
-        height:10,
-    };
-
-    const captureZone = {
-        position:'absolute',
-        top: screenH * 0.5,
-        left: 0,
-        width: screenW,
-        height: screenH * 0.1,
-        borderColor: 'green',
-        borderWidth: 3,
-    } 
-
-    console.log(captureZone);
-
     return (
         device != null &&
         hasPermission && (
@@ -150,10 +148,10 @@ export default function App() {
                 <Camera
                     style={StyleSheet.absoluteFill}
                     device={device}
-                    isActive={false} 
-                    // format={format}
+                    isActive={true} 
                     frameProcessor={frameProcessor}
                     frameProcessorFps={1} 
+                    enableZoomGesture={true}
                 />
                 <StatusBar hidden={true} translucent={true}/>
                 {matchedFrame  &&
@@ -161,9 +159,6 @@ export default function App() {
                     <Text></Text>
                 </View>
                 }
-                <View style={midStyle}>
-                    <Text></Text>
-                </View>
                 <View style={captureZone}>
                 </View>
                 <View style={styles.infoContainer}>
@@ -177,7 +172,6 @@ export default function App() {
     );
 };
 
-
 function screenToFrameRatio(screenW, screenH, frameW, frameH) {
     return {
         wRatio: frameW / screenW,
@@ -188,5 +182,8 @@ function screenToFrameRatio(screenW, screenH, frameW, frameH) {
 const styles = {
     infoContainer: {
         position:'absolute',
+    },
+    camera: {
+        height:'50%',
     }
 }
