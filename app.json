@@ -1,4 +1,9 @@
 {
   "name": "rnvc4",
-  "displayName": "rnvc4"
+  "displayName": "rnvc4",
+  "extra": {
+    "eas": {
+      "projectId": "640d32a8-46a7-4db3-956d-08325ff2f728"
+    }
+  }
 }
