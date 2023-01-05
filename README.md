@@ -1,14 +1,16 @@
 # live-text-recognition
 
+Scan text to get an image and a short summary.
+
+![Alt Text](demo.gif)
 # Installation
-- clone repository
-- npm i
 ## 
 Install app 
-- Connect phone to USB, and enable debugging mode
-- npx react-native run-android
+- Download text-detector.apk file
 ## 
 Start local server
+- clone repository
+- npm i
 - Start metro: npx react-native start
 - Start tunnel: adb -s <device_id> reverse tcp:8081 tcp:8081
 8081
