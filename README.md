@@ -2,7 +2,8 @@
 
 Scan text to get an image and a short summary.
 
-![Alt Text](demo.gif)
+<img src="demo.gif" height="500"/>
+
 # Installation
 ## 
 Install app 
