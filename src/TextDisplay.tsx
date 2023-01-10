@@ -2,8 +2,21 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Image, ScrollView } from 'react-native';
 
-export default function TextDisplay({ query = 'Samosa' }) {
-    const [wikiResult, setWikiResult] = useState('');
+/**
+ * https://en.wikipedia.org/api/rest_v1/#/Page%20content/get_page_summary__title_
+ */
+type WikiResult = {
+    [prop: string]: any,
+    thumbnail?: {
+        source: string,
+        width: number,
+        height: number
+    }
+    extract: string // short summary of query
+}
+
+export default function TextDisplay({ query } : {query:string}) {
+    const [wikiResult, setWikiResult] = useState<WikiResult | null>();
 
     useEffect(() => {
         const getWikiData = async () => {
@@ -11,9 +24,9 @@ export default function TextDisplay({ query = 'Samosa' }) {
             const response = await fetch(url);
             const result = await response.json();
             setWikiResult(result);
-        }
+        };
 
-        getWikiData(query);
+        getWikiData();
     },[query]);
 
     return (
@@ -33,8 +46,8 @@ export default function TextDisplay({ query = 'Samosa' }) {
                 </ScrollView>
             </View>
         </View>
-    )
-};
+    );
+}
 
 const styles = StyleSheet.create({
     mainContainer: {
@@ -51,5 +64,5 @@ const styles = StyleSheet.create({
     },
     descriptionContainer: {
         flex:1,
-    }
-})
+    },
+});
