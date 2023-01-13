@@ -13,38 +13,39 @@ import {
 } from 'react-native-reanimated';
 import TextDisplay from './TextDisplay';
 
-// todo can get this info from frame.width / frame.height instead of hard coding
-const FRAME_WIDTH = 480; // 720 if height is 100%
-const FRAME_HEIGHT = 640; // 1280 if height is 100%
-const CAMERA_CONTAINER_HEIGHT = 50; // percentage of total camera height. note frame dimensions are different at 100%
-const SHOW_DETECTION_BOX = false; // use to debug position of scanned text
+const CAMERA_CONTAINER_HEIGHT = 50; // percentage of total camera height
+const SHOW_DETECTION_BOX = false; // true to debug position of scanned text
 
-type DetectionBoxBounds = {
-    [prop: string]: any,
+type DetectionBoxBounds = Bounds & {
+    [key in keyof React.CSSProperties] : any
+}
+
+type Bounds = {
     top: number,
     left: number,
     width: number,
     height: number
 }
 
-type Bounds = {
-    value: DetectionBoxBounds
-}
-
 export default function TextDetector() {
     let {height:screenH, width:screenW} = useWindowDimensions();
     screenH *= CAMERA_CONTAINER_HEIGHT / 100;
-    const bounds: Bounds = useSharedValue({top:0, left:0, width:0, height:0});
-    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, FRAME_WIDTH, FRAME_HEIGHT);
+    const bounds = useSharedValue<Bounds>({top:0, left:0, width:0, height:0});
 
-    const [hasPermission, setHasPermission] = useState(false);
-    const [scannedText, setscannedText] = useState<string>();
-    const [textToQuery, setTextToQuery] = useState('');
+    // frame dimension will be obtained in the processor
+    // set initial value to any number above 0 to avoid errors
+    const frameDimension = useSharedValue<{width:number, height:number}>({width:1, height:1});
+
+    const {wRatio, hRatio} = screenToFrameRatio(screenW, screenH, frameDimension.value.width, frameDimension.value.height);
+
+    const [hasPermission, setHasPermission] = useState<boolean>(false);
+    const [scannedText, setScannedText] = useState<string>('');
+    const [textToQuery, setTextToQuery] = useState<string>('');
 
     const devices = useCameraDevices();
     const device = devices.back;
 
-    // dimensions relative to camera
+    // dimensions of capture zone relative to camera
     const captureZone: DetectionBoxBounds = {
         top: screenH * 0.5,
         left: 0,
@@ -66,6 +67,11 @@ export default function TextDetector() {
         'worklet';
         const scannedOcr = scanOCR(frame);
 
+        frameDimension.value = {
+            width: frame.width,
+            height: frame.height,
+        };
+
         if (scannedOcr) {
             const textWithinCaptureArea = getTextInCaptureArea(scannedOcr.result.blocks);
             if (textWithinCaptureArea.length !== 0) {
@@ -76,16 +82,16 @@ export default function TextDetector() {
                     width: capturedFrame.width,
                     height: capturedFrame.height,
                 };
-                runOnJS(setscannedText)(textWithinCaptureArea[0].text);
+                runOnJS(setScannedText)(textWithinCaptureArea[0].text);
             }
         }
 
         /**
          * Remove OCR results not within capture frame
          * @param {TextBlock} blocks of text. Think of it like a paragraph
-         * @returns
+         * @returns {TextLine[] | []} Textlines within bounds of capture area
          */
-        function getTextInCaptureArea(blocks: TextBlock[]) {
+        function getTextInCaptureArea(blocks: TextBlock[]): TextLine[] | [] {
             const result: TextLine[] = [];
             blocks.map((block: TextBlock) => {
                 // skip current block if it's not within capture zone
@@ -102,21 +108,23 @@ export default function TextDetector() {
         }
 
         /**
-         * True if rect's center point is within capture zone
-         * @param {TextBlock | TextLine} rect1
+         * Check if center point of a rect is within the capture zone
+         * @param {TextBlock | TextLine} rect
+         * @return {boolean} True if rect's center point is within capture zone
          */
-        function isRectWithinCaptureZone(rect:TextBlock | TextLine) {
+        function isRectWithinCaptureZone(rect:TextBlock | TextLine): boolean {
             const rectCenterX = rect.frame.boundingCenterX;
             const rectCenterY = rect.frame.boundingCenterY;
 
-            // dimensions relative to frame
-            const frameCaptureZone: DetectionBoxBounds = {
+            // dimensions of capture zone relative to frame
+            const frameCaptureZone: Bounds = {
                 top: captureZone.top * hRatio,
                 left: captureZone.left * wRatio,
                 width: captureZone.width * wRatio,
                 height: captureZone.height * hRatio,
             };
 
+            // position of all 4 corners of the capture zone relative to frame
             const captureCoordinates = {
                 left: frameCaptureZone.left,
                 top: frameCaptureZone.top,
@@ -128,9 +136,14 @@ export default function TextDetector() {
         }
     }, []);
 
+    /**
+     * Merge detection box styling and positioning into one object
+     * @returns {DetectionBoxBounds}
+     */
     function createDetectionBox(): DetectionBoxBounds {
         let detectionBoxPosition = {};
         if (Object.keys(bounds?.value).length !== 0) {
+
             const padding = 0;
             const topPos = bounds.value.top / hRatio;
             const leftPos = bounds.value.left / wRatio;
@@ -184,7 +197,17 @@ export default function TextDetector() {
     );
 }
 
+/**
+ * Screen refers to the phone screen.
+ * Note that for Android, the width and height are flipped.
+ * The frame's dimensions are based on the default orientation (landscape left) of the phone
+ * So when the phone is in portrait mode, the dimensions should be flipped.
+ */
 function screenToFrameRatio(screenW: number, screenH: number, frameW: number, frameH: number) {
+
+    // flip dimensions to account for orientation
+    [frameW, frameH] = [frameH, frameW];
+
     return {
         wRatio: frameW / screenW,
         hRatio: frameH / screenH,

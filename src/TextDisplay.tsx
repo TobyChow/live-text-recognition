@@ -6,7 +6,6 @@ import { StyleSheet, View, Text, Image, ScrollView } from 'react-native';
  * https://en.wikipedia.org/api/rest_v1/#/Page%20content/get_page_summary__title_
  */
 type WikiResult = {
-    [prop: string]: any,
     thumbnail?: {
         source: string,
         width: number,
@@ -19,14 +18,21 @@ export default function TextDisplay({ query } : {query:string}) {
     const [wikiResult, setWikiResult] = useState<WikiResult | null>();
 
     useEffect(() => {
+        let ignore = false;
         const getWikiData = async () => {
             const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${query}?redirect=true`;
             const response = await fetch(url);
             const result = await response.json();
-            setWikiResult(result);
+            if (!ignore) {
+                setWikiResult(result);
+            }
         };
 
         getWikiData();
+
+        return () => {
+            ignore = true;
+        };
     },[query]);
 
     return (
